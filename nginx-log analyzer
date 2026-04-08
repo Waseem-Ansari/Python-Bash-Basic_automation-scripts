@@ -1,0 +1,38 @@
+#!/bin/bash
+#For testing purpose use this nginx log file https://gist.githubusercontent.com/kamranahmedse/e66c3b9ea89a1a030d3b739eeeef22d0/raw/77fb3ac837a73c4f0206e78a236d885590b7ae35/nginx-access.log
+# Check if a file argument was providedx
+if [ -z "$1" ]; then
+    echo "Usage: $0 <log_file>"
+    exit 1
+fi
+
+LOG_FILE=$1
+
+# Function to count and format the top 5 occurrences
+# $1: Field number for awk, $2: Label for the section
+get_top_5() {
+    echo "Top 5 $2:"
+    # 1. awk extracts the specific column
+    # 2. sort groups identical lines together
+    # 3. uniq -c counts occurrences
+    # 4. sort -rn sorts numerically, descending
+    # 5. head -n 5 takes the top 5
+    # 6. sed formats the output to match the requested style
+    awk "{print \$$1}" "$LOG_FILE" | sort | uniq -c | sort -rn | head -n 5 | \
+    sed -E 's/^[[:space:]]*([0-9]+)[[:space:]]+(.*)/\2 - \1 requests/'
+    echo ""
+}
+
+# 1. IP Addresses (Column 1)
+get_top_5 1 "IP addresses with the most requests"
+
+# 2. Paths (Column 7 - inside the "GET /path HTTP/1.1" block)
+get_top_5 7 "most requested paths"
+
+# 3. Status Codes (Column 9)
+get_top_5 9 "response status codes"
+
+# 4. User Agents (Column 12 and onwards)
+echo "Top 5 user agents:"
+awk -F'"' '{print $6}' "$LOG_FILE" | sort | uniq -c | sort -rn | head -n 5 | \
+sed -E 's/^[[:space:]]*([0-9]+)[[:space:]]+(.*)/\2 - \1 requests/'
